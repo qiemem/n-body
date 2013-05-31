@@ -7,10 +7,7 @@ to setup
   set-default-shape bodies "circle"
   set-default-shape center-of-mass "x"
   create-bodies num-bodies
-  [ set xc random-xcor set yc random-ycor
-    set mass 1
-    update-visibility
-    set speed 2 * speed-spread - random-float speed-spread ]
+  [ set xc random-xcor set yc random-ycor init-body ]
   create-center-of-mass 1 [ center set size 5 ]
   ;follow one-of center-of-mass
   center
@@ -18,11 +15,13 @@ to setup
 end
 
 to add-body
-  create-bodies 1
-  [ set xc random-xcor set yc random-ycor
-    set mass 1
-    update-visibility
-    set speed 2 * speed-spread - random-float speed-spread ]
+  create-bodies 1 [ set xc random-xcor set yc random-ycor init-body ]
+end
+
+to init-body   
+  set mass 1
+  set speed 2 * speed-spread - random-float speed-spread
+  update-visibility
 end
 
 to go
@@ -32,9 +31,29 @@ to go
   [ ask bodies
     [ foreach [ self ] of collisions [ collide ? ] ] ]
   if center? [ center ]
+  redraw
+  tick
+end
+
+to redraw
   ask bodies [ update-visibility ]
   ask center-of-mass [ setxy com-x com-y ]
-  tick
+end
+
+to spray-paint
+  if mouse-down? [
+    every .05 [
+      create-bodies 1 [
+        set xc mouse-xcor / zoom
+        set yc mouse-ycor / zoom
+        rt random 360
+        let r random spray-radius
+        set xc xc + dx * r
+        set yc yc + dy * r
+        init-body
+      ]
+    ]
+  ]
 end
 
 to update-vel [ dt ]
@@ -128,9 +147,9 @@ to-report com-y
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-487
+482
 10
-1099
+1094
 643
 150
 150
@@ -148,8 +167,8 @@ GRAPHICS-WINDOW
 150
 -150
 150
-1
-1
+0
+0
 1
 ticks
 30.0
@@ -197,7 +216,7 @@ num-bodies
 num-bodies
 1
 2000
-200
+1
 1
 1
 NIL
@@ -219,10 +238,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-221
-263
-393
-296
+195
+269
+367
+302
 global-dt
 global-dt
 0
@@ -234,24 +253,24 @@ NIL
 HORIZONTAL
 
 SWITCH
-37
-283
-158
-316
+30
+267
+151
+300
 collisions?
 collisions?
-1
+0
 1
 -1000
 
 SWITCH
-36
-245
-139
-278
+29
+229
+132
+262
 center?
 center?
-0
+1
 1
 -1000
 
@@ -325,10 +344,10 @@ PENS
 "default" 1.0 1 -16777216 true "" "histogram [mass] of bodies"
 
 SLIDER
-222
-204
-394
-237
+196
+210
+368
+243
 softening-factor
 softening-factor
 0
@@ -355,10 +374,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-244
-154
-416
-187
+218
+160
+390
+193
 zoom
 zoom
 0.001
@@ -370,10 +389,10 @@ NIL
 HORIZONTAL
 
 BUTTON
-252
-37
-345
-70
+260
+15
+353
+48
 NIL
 add-body
 NIL
@@ -385,6 +404,55 @@ NIL
 NIL
 NIL
 1
+
+BUTTON
+221
+64
+295
+97
+NIL
+redraw
+T
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+319
+64
+423
+97
+NIL
+spray-paint
+T
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+SLIDER
+247
+109
+419
+142
+spray-radius
+spray-radius
+0
+100
+10
+1
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
