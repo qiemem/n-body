@@ -1,55 +1,78 @@
+extensions [ inf ]
+
+globals [ pan-center-x pan-center-y pan-mouse-x pan-mouse-y ]
+
 breed [ bodies body ]
 breed [ center-of-mass ]
 
-bodies-own [ speed mass xc yc ]
+bodies-own [ speed mass ]
+
 to setup
   ca
+  inf:set-center 0 0
   set-default-shape bodies "circle"
   set-default-shape center-of-mass "x"
   create-bodies num-bodies
-  [ set xc random-xcor set yc random-ycor init-body ]
-  create-center-of-mass 1 [ center set size 5 ]
-  ;follow one-of center-of-mass
-  center
+  [ inf:setxy random-xcor random-ycor init-body ]
   reset-ticks
-end
-
-to add-body
-  create-bodies 1 [ set xc random-xcor set yc random-ycor init-body ]
 end
 
 to init-body   
   set mass 1
   set speed 2 * speed-spread - random-float speed-spread
-  update-visibility
+end
+
+to update-view
+  ifelse spray-paint? [ spray-paint ] [ mouse-pan ]
+  update-zoom
+  display
+end
+
+to mouse-pan
+  ifelse mouse-down? [
+    ifelse is-number? pan-mouse-x and is-number? pan-mouse-y [
+      let delta-x inf:to-inf-size (pan-mouse-x - mouse-xcor)
+      let delta-y inf:to-inf-size (pan-mouse-y - mouse-ycor)
+      inf:set-center (pan-center-x + delta-x) (pan-center-y + delta-y)
+    ] [
+      set pan-center-x inf:center-xcor
+      set pan-center-y inf:center-ycor
+      set pan-mouse-x mouse-xcor
+      set pan-mouse-y mouse-ycor
+    ]
+  ] [
+    set pan-center-x false
+    set pan-center-y false
+    set pan-mouse-x false
+    set pan-mouse-y false
+    if center? [ inf:set-center com-x com-y ]
+  ]
+end
+
+to update-zoom
+  inf:set-zoom (10 ^ zoom-exp)
 end
 
 to go
-  ask bodies [  update-vel global-dt ]
+  ask bodies [ update-vel global-dt ]
   ask bodies [ update-pos global-dt ]
-  if collisions?
-  [ ask bodies
-    [ foreach [ self ] of collisions [ collide ? ] ] ]
-  if center? [ center ]
-  redraw
+  if collisions? [
+    ask bodies [
+      foreach [ self ] of collisions [ collide ? ]
+    ]
+  ]
+  ask bodies [ inf:set-size sqrt mass ]
+  no-display
   tick
-end
-
-to redraw
-  ask bodies [ update-visibility ]
-  ask center-of-mass [ setxy com-x com-y ]
 end
 
 to spray-paint
   if mouse-down? [
     every .05 [
       create-bodies 1 [
-        set xc mouse-xcor / zoom
-        set yc mouse-ycor / zoom
+        inf:setxy inf:to-inf-xcor mouse-xcor inf:to-inf-ycor mouse-ycor
         rt random 360
-        let r random spray-radius
-        set xc xc + dx * r
-        set yc yc + dy * r
+        inf:fd random spray-radius
         init-body
       ]
     ]
@@ -57,14 +80,14 @@ to spray-paint
 end
 
 to update-vel [ dt ]
-  let x xc
-  let y yc
+  let x inf:xcor
+  let y inf:ycor
   let gx 0
   let gy 0
   ask bodies
   [ ;let dsq dist-sq myself
-    let x-diff x - xc
-    let y-diff y - yc
+    let x-diff x - inf:xcor
+    let y-diff y - inf:ycor
     let dsq x-diff * x-diff + y-diff * y-diff
     ;if dsq < 1 [ set dsq 1 ]
     ;let d dist myself
@@ -79,40 +102,23 @@ to update-vel [ dt ]
 end
 
 to update-pos [ dt ]
-  set xc xc + dx * speed * dt
-  set yc yc + dy * speed * dt
-end
-
-to update-visibility
-  let zxc zoom * xc
-  let zyc zoom * yc
-  ifelse zxc < max-pxcor and zxc > min-pxcor and zyc < max-pycor and zyc > min-pycor
-  [ setxy zxc zyc
-    set hidden? false ]
-  [ set hidden? true ]
-  set size scale * zoom * sqrt mass
+  inf:fd dt * speed
 end
 
 to collide [ body ]
-  set xc xc * mass + [ xc * mass ] of body
-  set yc yc * mass + [ yc * mass ] of body
+  inf:set-xcor inf:xcor * mass + [ inf:xcor * mass ] of body
+  inf:set-ycor inf:ycor * mass + [ inf:ycor * mass ] of body
   let px vx * mass + [ vx * mass ] of body
   let py vy * mass + [ vy * mass ] of body
   set mass mass + [ mass ] of body
   set-velocity (px / mass) (py / mass)
-  set xc xc / mass
-  set yc yc / mass
+  inf:set-xcor inf:xcor / mass
+  inf:set-ycor inf:ycor / mass
   ask body [ die ]
 end
 
 to-report collisions
-  report other bodies with [ mass <= [ mass ] of myself and dist myself < (size / 2) + ([ size / 2 ] of myself) ]
-end
-
-to center
-  let cx com-x
-  let cy com-y
-  ask bodies [ set xc xc - cx  set yc yc - cy update-visibility ]
+  report other bodies with [ mass <= [ mass ] of myself and inf:distance myself < (inf:size / 2) + ([ inf:size / 2 ] of myself) ]
 end
 
 to set-velocity [ new-vx new-vy ]
@@ -120,16 +126,6 @@ to set-velocity [ new-vx new-vy ]
   if speed > 0 [ set heading atan new-vx new-vy ]
 end
 
-to-report dist-sq [ body ]
-  let x-diff xc - [ xc ] of body
-  let y-diff yc - [ yc ] of body
-  report x-diff * x-diff + y-diff * y-diff
-end
-
-to-report dist [ body ]
-  report sqrt dist-sq body
-end
-  
 to-report vx
   report speed * dx
 end
@@ -139,21 +135,21 @@ to-report vy
 end
 
 to-report com-x 
-  report sum [ xc * mass ] of bodies / sum [ mass ] of bodies
+  report sum [ inf:xcor * mass ] of bodies / sum [ mass ] of bodies
 end
 
 to-report com-y
-  report sum [ yc * mass ] of bodies / sum [ mass ] of bodies
+  report sum [ inf:ycor * mass ] of bodies / sum [ mass ] of bodies
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-482
+485
 10
-1094
-643
-150
-150
-2.0
+1101
+647
+50
+50
+6.0
 1
 10
 1
@@ -163,12 +159,12 @@ GRAPHICS-WINDOW
 0
 0
 1
--150
-150
--150
-150
-0
-0
+-50
+50
+-50
+50
+1
+1
 1
 ticks
 30.0
@@ -216,7 +212,7 @@ num-bodies
 num-bodies
 1
 2000
-1
+20
 1
 1
 NIL
@@ -238,10 +234,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-195
-269
-367
-302
+11
+218
+183
+251
 global-dt
 global-dt
 0
@@ -259,18 +255,18 @@ SWITCH
 300
 collisions?
 collisions?
-0
+1
 1
 -1000
 
 SWITCH
-29
-229
-132
-262
+227
+61
+330
+94
 center?
 center?
-1
+0
 1
 -1000
 
@@ -317,7 +313,7 @@ PENS
 MONITOR
 7
 537
-68
+94
 582
 NIL
 count bodies
@@ -326,10 +322,10 @@ count bodies
 11
 
 PLOT
-225
-391
-425
-541
+213
+387
+413
+537
 masses
 NIL
 NIL
@@ -344,10 +340,10 @@ PENS
 "default" 1.0 1 -16777216 true "" "histogram [mass] of bodies"
 
 SLIDER
-196
-210
-368
-243
+12
+159
+184
+192
 softening-factor
 softening-factor
 0
@@ -359,91 +355,25 @@ NIL
 HORIZONTAL
 
 SLIDER
-13
-152
-185
-185
-scale
-scale
-1
-100
-1
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-218
-160
-390
-193
-zoom
-zoom
-0.001
+438
+10
+475
+643
+zoom-exp
+zoom-exp
+-2
 2
+0
+.01
 1
-.001
-1
 NIL
-HORIZONTAL
-
-BUTTON
-260
-15
-353
-48
-NIL
-add-body
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-BUTTON
-221
-64
-295
-97
-NIL
-redraw
-T
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-BUTTON
-319
-64
-423
-97
-NIL
-spray-paint
-T
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
+VERTICAL
 
 SLIDER
-247
-109
-419
-142
+193
+218
+365
+251
 spray-radius
 spray-radius
 0
@@ -453,6 +383,34 @@ spray-radius
 1
 NIL
 HORIZONTAL
+
+BUTTON
+222
+21
+340
+54
+NIL
+update-view
+T
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+SWITCH
+207
+160
+351
+193
+spray-paint?
+spray-paint?
+1
+1
+-1000
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -797,7 +755,7 @@ Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 
 @#$#@#$#@
-NetLogo 5.0.4
+NetLogo 5.0.5
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
