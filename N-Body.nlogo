@@ -19,7 +19,7 @@ end
 
 to init-body   
   set mass 1
-  set speed 2 * speed-spread - random-float speed-spread
+  set speed random-float speed-spread
 end
 
 to update-view
@@ -84,20 +84,15 @@ to update-vel [ dt ]
   let y inf:ycor
   let gx 0
   let gy 0
-  ask bodies
-  [ ;let dsq dist-sq myself
+  ask bodies [
     let x-diff x - inf:xcor
     let y-diff y - inf:ycor
     let dsq x-diff * x-diff + y-diff * y-diff
-    ;if dsq < 1 [ set dsq 1 ]
-    ;let d dist myself
-    ;if d < 1 [ set d 1 ]
     let denom sqrt (dsq + softening-factor * softening-factor)
     set denom denom * denom * denom
     set gx gx + x-diff * mass / denom
-    set gy gy + y-diff * mass / denom ]
-  ;set gx gx * mass
-  ;set gy gy * mass
+    set gy gy + y-diff * mass / denom
+  ]
   set-velocity (vx - gx * dt) (vy - gy * dt)
 end
 
@@ -112,8 +107,7 @@ to collide [ body ]
   let py vy * mass + [ vy * mass ] of body
   set mass mass + [ mass ] of body
   set-velocity (px / mass) (py / mass)
-  inf:set-xcor inf:xcor / mass
-  inf:set-ycor inf:ycor / mass
+  inf:setxy inf:xcor / mass inf:ycor / mass
   ask body [ die ]
 end
 
@@ -212,7 +206,7 @@ num-bodies
 num-bodies
 1
 2000
-20
+1
 1
 1
 NIL
@@ -227,7 +221,7 @@ speed-spread
 speed-spread
 0
 10
-0
+10
 .1
 1
 NIL
@@ -255,7 +249,7 @@ SWITCH
 300
 collisions?
 collisions?
-1
+0
 1
 -1000
 
@@ -348,7 +342,7 @@ softening-factor
 softening-factor
 0
 5
-5
+1
 .1
 1
 NIL
@@ -357,13 +351,13 @@ HORIZONTAL
 SLIDER
 438
 10
-475
+471
 643
 zoom-exp
 zoom-exp
 -2
 2
-0
+-0.21
 .01
 1
 NIL
@@ -408,7 +402,7 @@ SWITCH
 193
 spray-paint?
 spray-paint?
-1
+0
 1
 -1000
 
@@ -755,7 +749,7 @@ Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 
 @#$#@#$#@
-NetLogo 5.0.5
+NetLogo 5.0.4
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
